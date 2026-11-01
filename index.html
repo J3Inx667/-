@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Хронология документов — Дело М-700/2026</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f8;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --accent: #3b82f6;
+            --accent-light: #eff6ff;
+            --border: #cbd5e1;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --card-bg: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 2rem 1rem;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Шапка и панель управления */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            color: var(--text-main);
+            margin-bottom: 0.25rem;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .view-toggle {
+            display: flex;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .view-btn {
+            background: transparent;
+            border: none;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Фильтры */
+        .filters {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .filter-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* --- РЕЖИМ: TIMELINE --- */
+        .timeline-view {
+            display: block;
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline-view::before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border);
+        }
+
+        .timeline-card {
+            position: relative;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .timeline-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .timeline-card::before {
+            content: '';
+            position: absolute;
+            left: -2.35rem;
+            top: 1.8rem;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            border: 3px solid var(--accent);
+            z-index: 2;
+        }
+
+        .timeline-card[data-type="contract"]::before { border-color: var(--success); }
+        .timeline-card[data-type="court"]::before { border-color: var(--danger); }
+        .timeline-card[data-type="letter"]::before { border-color: var(--warning); }
+
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .card-date {
+            font-weight: 700;
+            color: var(--accent);
+            font-size: 1rem;
+        }
+
+        .timeline-card[data-type="contract"] .card-date { color: var(--success); }
+        .timeline-card[data-type="court"] .card-date { color: var(--danger); }
+        .timeline-card[data-type="letter"] .card-date { color: var(--warning); }
+
+        .card-badge {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .card-badge.contract { background: #ecfdf5; color: var(--success); }
+        .card-badge.court { background: #fef2f2; color: var(--danger); }
+        .card-badge.letter { background: #fffbeb; color: var(--warning); }
+        .card-badge.other { background: #f1f5f9; color: var(--text-muted); }
+
+        .card-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-desc {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .card-source {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            font-family: monospace;
+            background: #f8fafc;
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        /* --- РЕЖИМ: TABLE --- */
+        .table-view {
+            display: none;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .table-view table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .table-view th {
+            background: #f8fafc;
+            padding: 1rem;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            border-bottom: 2px solid var(--border);
+        }
+
+        .table-view td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+            font-size: 0.95rem;
+        }
+
+        .table-view tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table-view tr:hover td {
+            background: #f8fafc;
+        }
+
+        .table-view .t-date {
+            font-weight: 600;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+
+        .table-view .t-title {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .table-view .t-source {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            font-family: monospace;
+        }
+
+        /* Утилиты */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .table-view td, .table-view th {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>Хронология документов</h1>
+            <p>Дело М-700/2026 — Конкурс им. М.Г. Розенберга</p>
+        </div>
+        <div class="view-toggle">
+            <button class="view-btn active" onclick="switchView('timeline')">Timeline</button>
+            <button class="view-btn" onclick="switchView('table')">Таблица</button>
+        </div>
+    </div>
+
+    <div class="filters">
+        <button class="filter-btn active" onclick="filterCards('all')">Все</button>
+        <button class="filter-btn" onclick="filterCards('contract')">Сделки</button>
+        <button class="filter-btn" onclick="filterCards('court')">Суд</button>
+        <button class="filter-btn" onclick="filterCards('letter')">Письма</button>
+        <button class="filter-btn" onclick="filterCards('other')">Прочее</button>
+    </div>
+
+    <!-- РЕЖИМ 1: TIMELINE -->
+    <div class="timeline-view" id="timeline-view">
+        
+        <div class="timeline-card" data-type="contract">
+            <div class="card-meta">
+                <span class="card-date">22.04.2025</span>
+                <span class="card-badge contract">Сделка</span>
+            </div>
+            <div class="card-title">Contract: LLC Welding Enterprises / Engineering LTD</div>
+            <div class="card-desc">Купля-продажа оборудования за 610 000 долл. США. Оплата в течение 40 дней после инвойса; первоначально CIF Rewari city. Монтаж и пуско-наладка. Разрешение споров путем взаимных договоренностей.</div>
+            <div class="card-source">Контракт, п. 1–7, стр. 7–10</div>
+        </div>
+
+        <div class="timeline-card" data-type="contract">
+            <div class="card-meta">
+                <span class="card-date">22.06.2025</span>
+                <span class="card-badge contract">Сделка</span>
+            </div>
+            <div class="card-title">Addendum 1 to the Contract</div>
+            <div class="card-desc">Замена CIF Rewari city на DAP Mundra (port Mundra), India по всему тексту Контракта. Остальные условия неизменны.</div>
+            <div class="card-source">Annex C 2, стр. 11</div>
+        </div>
+
+        <div class="timeline-card" data-type="other">
+            <div class="card-meta">
+                <span class="card-date">10.08.2025</span>
+                <span class="card-badge other">Документ</span>
+            </div>
+            <div class="card-title">FIATA Multimodal Transport Bill of Lading (FBL)</div>
+            <div class="card-desc">Упомянут как подтверждение поставки. Сам документ не воспроизведён; номер не указан.</div>
+            <div class="card-source">Statement of Claim, п. 5 и сноска 2, стр. 5</div>
+        </div>
+
+        <div class="timeline-card" data-type="other">
+            <div class="card-meta">
+                <span class="card-date">21.08.2025</span>
+                <span class="card-badge other">Документ</span>
+            </div>
+            <div class="card-title">Invoice No. 63</div>
+            <div class="card-desc">Дата, от которой исчисляется 40-дневный срок оплаты. Сам документ не воспроизведён. Номер указан.</div>
+            <div class="card-source">Statement of Claim, п. 5, стр. 5; Контракт, п. 2, стр. 8</div>
+        </div>
+
+        <div class="timeline-card" data-type="other">
+            <div class="card-meta">
+                <span class="card-date">18.09.2025</span>
+                <span class="card-badge other">Событие</span>
+            </div>
+            <div class="card-title">Прибытие оборудования в порт Mundra</div>
+            <div class="card-desc">По утверждению Respondent No. 1: в течение шести дней с этой даты были выполнены и оплачены импортное таможенное оформление, выпуск в свободное обращение и доставка на площадку в Rewari City силами Ответчика № 1. Отдельная точная дата доставки на площадку не указана.</div>
+            <div class="card-source">Statement of Defence Respondent № 1, п. 13, стр. 19</div>
+        </div>
+
+        <div class="timeline-card" data-type="other">
+            <div class="card-meta">
+                <span class="card-date">Октябрь 2025</span>
+                <span class="card-badge other">Событие</span>
+            </div>
+            <div class="card-title">Act of Completion of the Installation and Commissioning Works</div>
+            <div class="card-desc">О составлении акта сообщает Ответчик № 1. В отзыве описаны недостатки оборудования. Сам акт не воспроизведён; его точное содержание и подписи не проверяются.</div>
+            <div class="card-source">Statement of Defence R1, п. 14, стр. 20; Контракт, п. 4, стр. 9</div>
+        </div>
+
+        <div class="timeline-card" data-type="letter">
+            <div class="card-meta">
+                <span class="card-date">25.10.2025</span>
+                <span class="card-badge letter">Письмо</span>
+            </div>
+            <div class="card-title">Письмо Продавца Покупателю (formal demand)</div>
+            <div class="card-desc">Требование оплатить оборудование в течение 30 дней с даты претензии. Подписант: Adolat Boltaev.</div>
+            <div class="card-source">Annex C 4, стр. 14; Statement of Claim, п. 6, стр. 5</div>
+        </div>
+
+        <div class="timeline-card" data-type="contract">
+            <div class="card-meta">
+                <span class="card-date">30.10.2025</span>
+                <span class="card-badge contract">Сделка</span>
+            </div>
+            <div class="card-title">Additional Agreement: Seller, Buyer and End Customer</div>
+            <div class="card-desc">Конечный заказчик обязуется обеспечить выполнение Покупателем обязательств по уплате Продавцу стоимости оборудования в течение 7 дней; при неплатеже — уведомление Конечного заказчика. Последний обеспечивает поступление денег из собственных средств в течение 7 дней с получения уведомления. Неустойка: 100 000 долл. США.</div>
+            <div class="card-source">Annex C 3, стр. 12–13</div>
+        </div>
+
+        <div class="timeline-card" data-type="letter">
+            <div class="card-meta">
+                <span class="card-date">25.11.2025</span>
+                <span class="card-badge letter">Письмо</span>
+            </div>
+            <div class="card-title">Письмо Продавца к End Customer</div>
+            <div class="card-desc">Сообщение о неоплате и нарушении Дополнительного соглашения; просьба содействовать оплате. Не может рассматриваться как уведомление по п. 3 соглашения; дата получения не установлена.</div>
+            <div class="card-source">Annex C 5, стр. 15; Statement of Claim, пп. 11–14, стр. 6</div>
+        </div>
+
+        <div class="timeline-card" data-type="court">
+            <div class="card-meta">
+                <span class="card-date">01.03.2026</span>
+                <span class="card-badge court">Суд</span>
+            </div>
+            <div class="card-title">Statement of Claim</div>
+            <div class="card-desc">Требования солидарно с обоих ответчиков взыскать USD 610,000 стоимости оборудования, USD 100,000 неустойки и USD 33,280 арбитражных расходов. Подписант: Adolat Boltaev.</div>
+            <div class="card-source">Стр. 4–6. Требования: п. 19, стр. 6</div>
+        </div>
+
+        <div class="timeline-card" data-type="court">
+            <div class="card-meta">
+                <span class="card-date">10.03.2026</span>
+                <span class="card-badge court">Суд</span>
+            </div>
+            <div class="card-title">Письмо от Executive Secretary of the ICAC ответчикам</div>
+            <div class="card-desc">Сообщение о предъявлении иска 01.03.2026; предложение избрать основного и запасного арбитров и представить отзыв. Подписант: V. Frolochkin.</div>
+            <div class="card-source">Стр. 16 <em>(опечатка «10 Macrh»)</em></div>
+        </div>
+
+        <div class="timeline-card" data-type="court">
+            <div class="card-meta">
+                <span class="card-date">19.06.2026</span>
+                <span class="card-badge court">Суд</span>
+            </div>
+            <div class="card-title">Statement of Defence: Respondent No. 2</div>
+            <div class="card-desc">Возражения против компетенции МКАС и ходатайство о прекращении разбирательства в отношении Ответчика № 2. По существу: оплата после устранения дефектов и пуска оборудования.</div>
+            <div class="card-source">Стр. 21–22</div>
+        </div>
+
+        <div class="timeline-card" data-type="court">
+            <div class="card-meta">
+                <span class="card-date">20.06.2026</span>
+                <span class="card-badge court">Суд</span>
+            </div>
+            <div class="card-title">Statement of Defence: Respondent No. 1</div>
+            <div class="card-desc">Возражения против компетенции МКАС. Упомянуты дефекты оборудования и невозможность использования; просьба отказать в требованиях истца полностью.</div>
+            <div class="card-source">Стр. 18–20</div>
+        </div>
+
+        <div class="timeline-card" data-type="court">
+            <div class="card-meta">
+                <span class="card-date">28.06.2026</span>
+                <span class="card-badge court">Суд</span>
+            </div>
+            <div class="card-title">Письмо от Executive Secretary of the ICAC к Истцу</div>
+            <div class="card-desc">Направление Истцу отзывов обоих ответчиков.</div>
+            <div class="card-source">Стр. 17</div>
+        </div>
+
+    </div>
+
+    <!-- РЕЖИМ 2: TABLE -->
+    <div class="table-view" id="table-view">
+        <table>
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Документ / Событие</th>
+                    <th>Источник</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-type="contract">
+                    <td class="t-date">22.04.2025</td>
+                    <td><span class="t-title">Contract: LLC Welding Enterprises / Engineering LTD</span> Купля-продажа оборудования за 610 000 долл. США. Оплата в течение 40 дней после инвойса; CIF Rewari city.</td>
+                    <td class="t-source">Контракт, п. 1–7, стр. 7–10</td>
+                </tr>
+                <tr data-type="contract">
+                    <td class="t-date">22.06.2025</td>
+                    <td><span class="t-title">Addendum 1 to the Contract</span> Замена CIF Rewari city на DAP Mundra (port Mundra), India по всему тексту Контракта.</td>
+                    <td class="t-source">Annex C 2, стр. 11</td>
+                </tr>
+                <tr data-type="other">
+                    <td class="t-date">10.08.2025</td>
+                    <td><span class="t-title">FIATA Multimodal Transport Bill of Lading (FBL)</span> Упомянут как подтверждение поставки. Сам документ не воспроизведён.</td>
+                    <td class="t-source">Иск, п. 5 и сноска 2, стр. 5</td>
+                </tr>
+                <tr data-type="other">
+                    <td class="t-date">21.08.2025</td>
+                    <td><span class="t-title">Invoice No. 63</span> Дата, от которой исчисляется 40-дневный срок оплаты.</td>
+                    <td class="t-source">Иск, п. 5, стр. 5; Контракт, п. 2, стр. 8</td>
+                </tr>
+                <tr data-type="other">
+                    <td class="t-date">18.09.2025</td>
+                    <td><span class="t-title">Прибытие в порт Mundra</span> По версии Ответчика № 1: в течение шести дней с этой даты были выполнены и оплачены импортное таможенное оформление, выпуск в свободное обращение и доставка на площадку в Rewari City силами Ответчика № 1. Отдельная точная дата доставки на площадку не указана.</td>
+                    <td class="t-source">Отзыв № 1, п. 13, стр. 19</td>
+                </tr>
+                <tr data-type="other">
+                    <td class="t-date">Октябрь 2025</td>
+                    <td><span class="t-title">Act of Completion of the Installation and Commissioning Works</span> О составлении сообщает Ответчик № 1. Описаны недостатки. Сам акт не воспроизведён.</td>
+                    <td class="t-source">Отзыв № 1, п. 14, стр. 20; Контракт, п. 4, стр. 9</td>
+                </tr>
+                <tr data-type="letter">
+                    <td class="t-date">25.10.2025</td>
+                    <td><span class="t-title">Письмо Продавца Покупателю (formal demand)</span> Требование оплаты в течение 30 дней.</td>
+                    <td class="t-source">Annex C 4, стр. 14; Иск, п. 6, стр. 5</td>
+                </tr>
+                <tr data-type="contract">
+                    <td class="t-date">30.10.2025</td>
+                    <td><span class="t-title">Additional Agreement</span> Ответчик № 2 обязуется обеспечить оплату из своих средств за 7 дней. Неустойка 100 000 USD.</td>
+                    <td class="t-source">Annex C 3, стр. 12–13</td>
+                </tr>
+                <tr data-type="letter">
+                    <td class="t-date">25.11.2025</td>
+                    <td><span class="t-title">Письмо Продавца к End Customer</span> Просьба о содействии. Спорно: является ли уведомлением по п. 3.</td>
+                    <td class="t-source">Annex C 5, стр. 15; Иск, пп. 11–14, стр. 6</td>
+                </tr>
+                <tr data-type="court">
+                    <td class="t-date">01.03.2026</td>
+                    <td><span class="t-title">Statement of Claim</span> Требования: 610 000 USD долг, 100 000 USD неустойка, 33 280 USD сборы. Солидарно.</td>
+                    <td class="t-source">Стр. 4–6, п. 19</td>
+                </tr>
+                <tr data-type="court">
+                    <td class="t-date">10.03.2026</td>
+                    <td><span class="t-title">Письмо МКАС</span> Дело № М-700/2026. Предложение избрать арбитров.</td>
+                    <td class="t-source">Стр. 16</td>
+                </tr>
+                <tr data-type="court">
+                    <td class="t-date">19.06.2026</td>
+                    <td><span class="t-title">Отзыв Ответчика № 2</span> Возражение против компетенции.</td>
+                    <td class="t-source">Стр. 21–22</td>
+                </tr>
+                <tr data-type="court">
+                    <td class="t-date">20.06.2026</td>
+                    <td><span class="t-title">Отзыв Ответчика № 1</span> Возражение против компетенции. Ссылка на дефекты.</td>
+                    <td class="t-source">Стр. 18–20</td>
+                </tr>
+                <tr data-type="court">
+                    <td class="t-date">28.06.2026</td>
+                    <td><span class="t-title">Письмо МКАС</span> Направление отзывов Истцу.</td>
+                    <td class="t-source">Стр. 17</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+    // Переключение вида
+    function switchView(view) {
+        document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+
+        if (view === 'timeline') {
+            document.getElementById('timeline-view').style.display = 'block';
+            document.getElementById('table-view').style.display = 'none';
+        } else {
+            document.getElementById('timeline-view').style.display = 'none';
+            document.getElementById('table-view').style.display = 'block';
+        }
+    }
+
+    // Фильтрация карточек
+    function filterCards(type) {
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+
+        // Фильтр для Timeline
+        document.querySelectorAll('.timeline-card').forEach(card => {
+            if (type === 'all' || card.getAttribute('data-type') === type) {
+                card.classList.remove('hidden');
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        // Фильтр для Table
+        document.querySelectorAll('.table-view tbody tr').forEach(row => {
+            if (type === 'all' || row.getAttribute('data-type') === type) {
+                row.classList.remove('hidden');
+            } else {
+                row.classList.add('hidden');
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
+
